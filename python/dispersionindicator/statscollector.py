@@ -71,7 +71,7 @@ def playerAvatar_getOwnVehicleShotDispersionAngle(orig_result, self, turretRotat
 
 @overrideMethod(_GunControlMode, 'updateGunMarker')
 @callOriginal(prev=True)
-def gunControlMode_updateGunMarker(orig_result, self, markerType, pos, direction, size, relaxTime, collData):
+def gunControlMode_updateGunMarker(orig_result, self, markerType, pos, direction, size, sizeOffset, relaxTime, collData):
     avatar = BigWorld.player()
     g_statsCollector.updateShotInfo(avatar, pos)
 
@@ -352,13 +352,14 @@ class StatsCollector(object):
         if stats is None:
             return
         aimingInfo = avatar._PlayerAvatar__aimingInfo
+        dispersionInfo = avatar._PlayerAvatar__dispersionInfo
         stats.aimingStartTime = aimingInfo[0]
         stats.aimingStartFactor = aimingInfo[1]
-        stats.multFactor = aimingInfo[2]
-        stats.factorsTurretRotation = aimingInfo[3]
-        stats.factorsMovement = aimingInfo[4]
-        stats.factorsRotation = aimingInfo[5]
-        stats.aimingTime = aimingInfo[6]
+        stats.multFactor = dispersionInfo[0]
+        stats.factorsTurretRotation = dispersionInfo[1]
+        stats.factorsMovement = dispersionInfo[2]
+        stats.factorsRotation = dispersionInfo[3]
+        stats.aimingTime = dispersionInfo[4]
 
     def updateVehicleDirection(self, avatar):
         _logger.debug('updateVehicleDirection')

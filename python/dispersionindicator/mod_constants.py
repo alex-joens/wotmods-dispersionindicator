@@ -46,7 +46,6 @@ ARENA_PERIOD_SYMBOL = {
 GUI_GLOBAL_SPACE_SYMBOL = {
     GuiGlobalSpaceID.UNDEFINED:         'UNDEFINED',
     GuiGlobalSpaceID.WAITING:           'WAITING',
-    GuiGlobalSpaceID.INTRO_VIDEO:       'INTRO_VIDEO',
     GuiGlobalSpaceID.LOGIN:             'LOGIN',
     GuiGlobalSpaceID.LOBBY:             'LOBBY',
     GuiGlobalSpaceID.BATTLE_LOADING:    'BATTLE_LOADING',
