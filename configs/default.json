@@ -80,6 +80,44 @@
             "factor":   "RAD_TO_DEG",
             "unit":     "deg"
         },
+        "vehicleYawDelta": {
+            "status":   "vehicleYawDelta",
+            "title":    "Vehicle Yaw Delta",
+            "format":   "{:.2f}",
+            "unit":     "rad/s"
+        },
+        "vehicleYawDeltaM": {
+            "status":   "vehicleYawDelta",
+            "title":    "Vehicle Yaw Delta",
+            "format":   "{:.2f}",
+            "factor":   "RAD_TO_DEG",
+            "unit":     "deg/s"
+        },
+        "averageVehicleYawDelta": {
+            "status":   "averageVehicleYawDelta",
+            "title":    "Avg. V. Rot. Speed",
+            "format":   "{:.2f}",
+            "unit":     "rad/s"
+        },
+        "averageVehicleYawDeltaM": {
+            "status":   "averageVehicleYawDelta",
+            "title":    "Avg. V. Rot. Speed",
+            "format":   "{:.2f}",
+            "factor":   "RAD_TO_DEG",
+            "unit":     "deg/s"
+        },
+        "turnRadius": {
+            "status":   "turnRadius",
+            "title":    "Turn Radius",
+            "format":   "{:.2f}",
+            "unit":     "m"
+        },
+        "averageTurnRadius": {
+            "status":   "averageTurnRadius",
+            "title":    "Avg. Turn Radius",
+            "format":   "{:.2f}",
+            "unit":     "m"
+        },
         "vehiclePitch": {
             "status":   "vehiclePitch",
             "title":    "Vehicle Pitch",

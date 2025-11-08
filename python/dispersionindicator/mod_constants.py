@@ -85,5 +85,5 @@ CLIENT_STATUS_LIST = [
     'flightTime',
     'piercingPercent', 'targetPenetrationArmor', 'targetArmor',  'targetArmorKind', 'targetVehicleName',
     'targetHitAngleCos', 'targetHitAngle', 'targetHitAngleNormalized', 'targetPiercingPower',
-    'piercingMultiplier'
+    'piercingMultiplier', 'vehicleYawDelta', 'vehicleYawDeltaM', 'averageVehicleYawDelta', 'averageVehicleYawDeltaM', 'turnRadius', 'averageTurnRadius',
 ]

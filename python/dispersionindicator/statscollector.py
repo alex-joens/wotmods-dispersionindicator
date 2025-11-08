@@ -1,11 +1,6 @@
-
-import logging
-import math
+import logging, math
 from datetime import datetime
-
-import Math
-import BigWorld
-import BattleReplay
+import Math, BigWorld, BattleReplay
 from Event import Event
 from debug_utils import LOG_CURRENT_EXCEPTION
 from Avatar import PlayerAvatar
@@ -56,7 +51,7 @@ def debugController_update(orig_result, self):
 
 @overrideMethod(PlayerAvatar, 'getOwnVehicleShotDispersionAngle')
 @callOriginal(prev=True)
-def playerAvatar_getOwnVehicleShotDispersionAngle(orig_result, self, turretRotationSpeed, withShot = 0):
+def playerAvatar_getOwnVehicleShotDispersionAngle(orig_result, self, turretRotationSpeed, withShot=0):
     dispersionAngle = orig_result
     avatar = self
     collector = g_statsCollector
@@ -66,14 +61,16 @@ def playerAvatar_getOwnVehicleShotDispersionAngle(orig_result, self, turretRotat
     collector.updateVehicleEngineState(avatar)
     collector.updateGunAngles(avatar)
     collector.updateVehicleDirection(avatar)
+    collector.updateYawChange(avatar)
+    collector.estimateTurningRadius(avatar)
     g_statsCollector.fireEvent(EVENT.UPDATE_DISPERSION_ANGLE)
 
 
 @overrideMethod(_GunControlMode, 'updateGunMarker')
 @callOriginal(prev=True)
-def gunControlMode_updateGunMarker(orig_result, self, markerType, pos, direction, size, sizeOffset, relaxTime, collData):
+def gunControlMode_updateGunMarker(orig_result, self, markerType, gunMarkerInfo, supportMarkersInfo, relaxTime):
     avatar = BigWorld.player()
-    g_statsCollector.updateShotInfo(avatar, pos)
+    g_statsCollector.updateShotInfo(avatar, gunMarkerInfo.hitPoint)
 
 
 @overrideMethod(PlayerAvatar, 'shoot')
@@ -129,17 +126,17 @@ def showShooting_doShot(_, self, data):
 
 @overrideMethod(CrosshairDataProxy, '_CrosshairDataProxy__setGunMarkerState')
 @callOriginal(prev=True)
-def crosshairDataProxy_setGunMarkerState(orig_result, self, markerType, value):
+def crosshairDataProxy_setGunMarkerState(orig_result, self, markerType, gunMarkerState):
     excludeTeam = g_statsCollector.clientStatus.playerTeam
-    hitPoint, direction, collision = value
+    hitPoint, direction, collData = gunMarkerState
     resultPenetrationInfo = {}
     piercingPercent = None
     for _ in [0]:
         #
         # from AvatarInputHandler.gun_marker_ctrl._CrosshairShotResults.getShotResult
-        if collision is None:
+        if collData is None:
             break
-        entity = collision.entity
+        entity = collData.entity
         if entity.__class__.__name__ not in ('Vehicle', 'DestructibleEntity'):
             break
         if entity.health <= 0 or entity.publicInfo['team'] == excludeTeam:
@@ -286,6 +283,13 @@ class StatsCollector(object):
     def __init__(self):
         self.clientStatus = None
         self.eventHandlers = Event()
+        self.previousTimestamp = BigWorld.time()
+        self.previousYaw = 0
+        self.yawDeltas = []
+        self.timeDeltas = []
+        self.vehiclePositions = []
+        self.timestamps = []
+        return
 
     def start(self):
         self.clientStatus = ClientStatus()
@@ -383,6 +387,76 @@ class StatsCollector(object):
             rYaw += math.pi * 2
         _logger.debug('updateVehicleDirection: vehicleRYaw=%s', rYaw)
         stats.vehicleRYaw = rYaw
+
+    def updateYawChange(self, avatar):
+        stats = self.clientStatus
+        if stats is None:
+            return
+        else:
+            currentTimestamp = BigWorld.time()
+            matrix = Math.Matrix(avatar.getOwnVehicleMatrix())
+            currentYaw = matrix.yaw
+            previousYaw = self.previousYaw
+            crossedOverNegativePoint = abs(previousYaw) > math.pi / 2 and abs(currentYaw) > math.pi / 2 and previousYaw * currentYaw < 0
+            if crossedOverNegativePoint and previousYaw < 0:
+                previousYaw += math.pi * 2
+            elif crossedOverNegativePoint and previousYaw > 0:
+                previousYaw -= math.pi * 2
+            yawDelta = currentYaw - previousYaw
+            timeDelta = currentTimestamp - self.previousTimestamp
+            if timeDelta == 0:
+                stats.vehicleYawDelta = 0
+            else:
+                stats.vehicleYawDelta = yawDelta / timeDelta
+            self.previousTimestamp = currentTimestamp
+            self.previousYaw = currentYaw
+            if len(self.yawDeltas) >= 50:
+                self.yawDeltas.pop(0)
+            self.yawDeltas.append(yawDelta)
+            if len(self.timeDeltas) >= 50:
+                self.timeDeltas.pop(0)
+            self.timeDeltas.append(timeDelta)
+            averageYawDelta = sum(self.yawDeltas) / len(self.yawDeltas)
+            averageTimeDelta = sum(self.timeDeltas) / len(self.timeDeltas)
+            if averageTimeDelta == 0:
+                stats.averageVehicleYawDelta = 0
+            else:
+                stats.averageVehicleYawDelta = averageYawDelta / averageTimeDelta
+            return
+
+    def estimateTurningRadius(self, avatar):
+        stats = self.clientStatus
+        if stats is None:
+            return
+        else:
+            position = avatar.getOwnVehiclePosition()
+            if len(self.vehiclePositions) >= 20:
+                self.vehiclePositions.pop(0)
+            self.vehiclePositions.append(position)
+            if len(self.vehiclePositions) < 3:
+                return
+
+            def radiusOfTriangle(v0, v1, v2):
+                A = (v0 - v1).length
+                B = (v1 - v2).length
+                C = (v2 - v0).length
+                s = 0.5 * (A + B + C)
+                K = math.sqrt(max(0.0, s * (s - A) * (s - B) * (s - C)))
+                if K == 0:
+                    return 0
+                return A * B * C / (4 * K)
+
+            last3Points = self.vehiclePositions[-3:]
+            stats.turnRadius = radiusOfTriangle(last3Points[0], last3Points[1], last3Points[2])
+            averageRadiusEstimate = 0
+            for i in range(len(self.vehiclePositions) - 2):
+                v0 = self.vehiclePositions[i]
+                v1 = self.vehiclePositions[i + 1]
+                v2 = self.vehiclePositions[i + 2]
+                averageRadiusEstimate += radiusOfTriangle(v0, v1, v2)
+
+            stats.averageTurnRadius = averageRadiusEstimate / (len(self.vehiclePositions) - 2)
+            return
 
     def updateGunAngles(self, avatar):
         stats = self.clientStatus
